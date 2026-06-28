@@ -451,4 +451,4 @@ with col_rec2:
     if st.button("🔄 Zerar e Recomeçar", use_container_width=True):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        st.rerun()
+    st.rerun()
