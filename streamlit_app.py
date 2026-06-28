@@ -350,11 +350,12 @@ if tem_sec:
         with col_i:
             campo_rede_cabo_vao("sec", padrao_rede=4)
         with col_j:
-            if precisa_vao(st.session_state.get("sec_rede", "")):
-                st.caption("Vao definido acima")
-            else:
-                st.caption("Vao: N/A")
+            st.radio("Quantas fases?", [1, 2, 3], index=1, horizontal=True, key="sec_qtd_fases")
+            st.selectbox("Bitola do neutro:", CABOS_CONVENCIONAL, index=1, key="sec_cabo_neutro")
         with col_k:
+            tem_controle_sec = st.checkbox("Possui Controle?", key="sec_tem_controle")
+            if tem_controle_sec:
+                st.selectbox("Bitola do controle:", CABOS_CONVENCIONAL, index=0, key="sec_cabo_controle")
             fim_sec = st.checkbox("Fim de linha?", key="sec_fim_linha")
         if not fim_sec:
             st.markdown("---")
@@ -363,8 +364,55 @@ if tem_sec:
                 st.markdown("##### Ângulo de Saida (Carga)")
                 st.slider("0° a 360°:", 0, 360, value=0, key="sec_ang_saida")
             with col_m:
-                st.caption("Rede Secundaria usa cabos do tipo selecionado")
-        processar_nivel("sec", h_sec)
+                cabos_iguais_sec = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
+                                            horizontal=True, key="sec_cabos_iguais")
+            if cabos_iguais_sec == "Diferentes":
+                campo_saida("sec")
+
+        # Calculo especifico da Secundaria (fases + neutro + controle)
+        ang_chegada_sec = st.session_state.get("sec_ang_chegada", 0)
+        rede_sec = st.session_state.get("sec_rede", "")
+        cabo_sec = st.session_state.get("sec_cabo", "")
+        vao_sec = st.session_state.get("sec_vao", None)
+        qtd_fases = st.session_state.get("sec_qtd_fases", 2)
+        cabo_neutro = st.session_state.get("sec_cabo_neutro", "A04")
+        tem_controle = st.session_state.get("sec_tem_controle", False)
+        fim_linha_sec = st.session_state.get("sec_fim_linha", False)
+
+        if rede_sec and cabo_sec and qtd_fases:
+            t_fase = obter_tracao(rede_sec, cabo_sec, vao_sec if precisa_vao(rede_sec) else None)
+            f_fases = tracao_transf(t_fase, altura_util(altura_poste), h_sec, int(qtd_fases))
+            t_neutro = obter_tracao(rede_sec, cabo_neutro, vao_sec if precisa_vao(rede_sec) else None)
+            f_neutro = tracao_transf(t_neutro, altura_util(altura_poste), h_sec, 1)
+            f_controle = 0
+            if tem_controle:
+                cabo_controle = st.session_state.get("sec_cabo_controle", "A02")
+                t_controle = obter_tracao(rede_sec, cabo_controle, vao_sec if precisa_vao(rede_sec) else None)
+                f_controle = tracao_transf(t_controle, altura_util(altura_poste), h_sec, 1)
+            f_total_sec = f_fases + f_neutro + f_controle
+            ang_rad_c = math.radians(ang_chegada_sec)
+            fx_total += f_total_sec * math.cos(ang_rad_c)
+            fy_total += f_total_sec * math.sin(ang_rad_c)
+            detalhe_sec = f"{rede_sec} / {cabo_sec} ({qtd_fases}f) / Neutro: {cabo_neutro}"
+            if tem_controle:
+                detalhe_sec += f" / Controle: {cabo_controle}"
+            resumo_linhas.append(f"**SEC** Chegada (Fonte): {detalhe_sec} -> {f_total_sec:.0f} daN @ {ang_chegada_sec}°")
+
+            if not fim_linha_sec:
+                ang_saida_sec = st.session_state.get("sec_ang_saida", 0)
+                cabos_iguais_sec = st.session_state.get("sec_cabos_iguais", "Mesmos")
+                if cabos_iguais_sec == "Diferentes":
+                    rede_s_sec = st.session_state.get("sec_rede_saida", rede_sec)
+                    cabo_s_sec = st.session_state.get("sec_cabo_saida", cabo_sec)
+                    vao_s_sec = st.session_state.get("sec_vao_saida", vao_sec)
+                    t_saida_sec = obter_tracao(rede_s_sec, cabo_s_sec, vao_s_sec if precisa_vao(rede_s_sec) else None)
+                    f_saida_sec = tracao_transf(t_saida_sec, altura_util(altura_poste), h_sec, int(qtd_fases))
+                else:
+                    f_saida_sec = f_total_sec
+                ang_rad_s = math.radians(ang_saida_sec)
+                fx_total += f_saida_sec * math.cos(ang_rad_s)
+                fy_total += f_saida_sec * math.sin(ang_rad_s)
+                resumo_linhas.append(f"  Saida (Carga): {ang_saida_sec}° -> {f_saida_sec:.0f} daN")
 
 st.markdown("---")
 st.subheader("Resultado do Calculo", divider="red")
@@ -390,26 +438,14 @@ with col_rec1:
         st.markdown(f"- {linha}")
     st.markdown(f"**Poste:** {altura_poste}m | **Altura util:** {h_util:.2f}m | **Local:** {localizacao}")
 with col_rec2:
-    st.markdown("### Recomendacao")
+    st.markdown("### Recomendacao (daN)")
+    thresholds = [200, 400, 600, 1000, 1500, 2000]
     if magnitude == 0:
-        st.info("Preencha os parametros acima para calcular.")
-    elif magnitude <= 300:
-        st.success("Poste de **9m** ou **10m** e suficiente")
-    elif magnitude <= 500:
-        st.success("Poste de **11m** ou **12m** recomendado")
-    elif magnitude <= 800:
-        st.warning("Poste de **14m** e recomendado")
-    elif magnitude <= 1200:
-        st.warning("Poste de **16m** e necessario")
+        st.info("Preencha os parametros para calcular.")
     else:
-        st.error(f"Carga de {magnitude:.0f} daN excede postes padrao")
-        st.caption("Consulte engenharia")
+        recomendado = next((t for t in thresholds if magnitude <= t), None)
+        if recomendado:
+            st.success(f"Esforco: **{magnitude:.0f} daN** -> Recomendado: **{recomendado} daN**")
+        else:
+            st.error(f"Esforco de {magnitude:.0f} daN excede 2000 daN. Consulte engenharia.")
 
-if magnitude > 0:
-    st.markdown("---")
-    st.markdown("### Comparativo de Postes")
-    st.dataframe({
-        "Poste": ["9m / 10m", "11m / 12m", "14m", "16m"],
-        "Carga Max. (daN)": [300, 500, 800, 1200],
-        "Atende": ["✅" if magnitude <= c else "❌" for c in [300, 500, 800, 1200]],
-    }, use_container_width=True, hide_index=True)
