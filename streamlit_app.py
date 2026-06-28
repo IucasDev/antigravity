@@ -1,7 +1,7 @@
 import streamlit as st
 import math
 
-st.set_page_config(page_title="Cálculo de Esforços Mecânicos", layout="centered")
+st.set_page_config(page_title="Cálculo de Esforços Mecânicos", layout="wide")
 
 # ============================================================
 # CONSTANTES - DADOS TÉCNICOS
@@ -23,11 +23,12 @@ CABOS_PRE_REUNIDO = ["PB35", "PB50", "PB70", "PB120"]
 CABOS_COMPACTA = ["A35P", "A50P", "A70P", "A120P", "A185P", "A240P"]
 CABOS_CAZ = ["CAZ 3,09", "CAZ 3x2,25", "CAW 3,26", "CAW 3x2,59", "CAA 04"]
 CABOS_PROTEGIDO = ["PA50", "PA70", "PA95", "PA120", "PA185", "PA240"]
-CABOS_CONVENCIONAL = ["A02", "A04", "A20", "A40", "A336", "A477",
-                      "C02", "C04", "C06", "C20", "C25", "C35", "C40", "C70", "C120",
-                      "S02", "S04", "S20", "S40", "S336", "S477"]
+CABOS_CONVENCIONAL = [
+    "A02", "A04", "A20", "A40", "A336", "A477",
+    "C02", "C04", "C06", "C20", "C25", "C35", "C40", "C70", "C120",
+    "S02", "S04", "S20", "S40", "S336", "S477",
+]
 
-# Trações por vão - Pré-Reunido
 PR = {
     "PB35":  {5: 4, 10: 14, 15: 32, 20: 56, 25: 88, 30: 127, 35: 172, 40: 225},
     "PB50":  {5: 6, 10: 24, 15: 51, 20: 91, 25: 142, 30: 204, 35: 278, 40: 363},
@@ -35,7 +36,6 @@ PR = {
     "PB120": {5: 8, 10: 33, 15: 74, 20: 132, 25: 206, 30: 296, 35: 403, 40: 527},
 }
 
-# Trações por vão - Compacta (tabela completa)
 CP = {
     "A50P":  {10: 461, 15: 469, 20: 477, 25: 486, 30: 495, 35: 503, 40: 516,
               45: 537, 50: 555, 55: 571, 60: 586, 65: 600, 70: 612, 75: 623, 80: 632},
@@ -51,7 +51,6 @@ CP = {
               45: 880, 50: 920, 55: 950, 60: 980, 65: 1010, 70: 1040, 75: 1060, 80: 1080},
 }
 
-# CAZ/CAW
 CAZ = {
     "CAZ 3,09":   {50: 229, 100: 256, 150: 263, 200: 282, 300: 318, 400: 349, 500: 376, 600: 400},
     "CAZ 3x2,25": {50: 357, 100: 395, 150: 406, 200: 436, 300: 491, 400: 540, 500: 580, 600: 615},
@@ -60,10 +59,8 @@ CAZ = {
     "CAA 04":     {50: 217, 100: 269, 150: 313, 200: 324, 300: 324, 400: 324, 500: 324, 600: 324},
 }
 
-# Protegido unitário
 PROT = {"PA50": 311, "PA70": 375, "PA95": 469, "PA120": 527, "PA185": 683, "PA240": 795}
 
-# Cabos -> tração (tabela geral)
 CAB_TR = {
     "A02": 86, "A04": 60, "A20": 173, "A336": 436, "A40": 274, "A477": 619,
     "C02": 171, "C04": 107, "C06": 60, "C120": 568, "C20": 342, "C25": 106,
@@ -80,12 +77,10 @@ def altura_util(h):
         return 0
     return h - h * 0.1 - 0.7
 
-
 def tracao_transf(tracao, h_util, h_cabo, qtd=1, mult=1.0):
     if not tracao or not h_util or h_util == 0:
         return 0
     return tracao / h_util * h_cabo * qtd * mult
-
 
 def obter_tracao(tipo_rede, cabo, vaio=None):
     if tipo_rede == "Pré-Reunido":
@@ -109,7 +104,6 @@ def obter_tracao(tipo_rede, cabo, vaio=None):
         return CAB_TR.get(cabo, 0)
     return 0
 
-
 def calc_resultante(forcas_x, forcas_y):
     sx = sum(forcas_x)
     sy = sum(forcas_y)
@@ -123,413 +117,447 @@ def calc_resultante(forcas_x, forcas_y):
     ang_exib = ang_deg if ang_deg >= 0 else 360 + ang_deg
     return mag, ang_exib
 
+def cabos_para_rede(tipo_rede):
+    if tipo_rede == "Pré-Reunido":
+        return CABOS_PRE_REUNIDO
+    elif tipo_rede == "Rede Compacta":
+        return CABOS_COMPACTA
+    elif tipo_rede == "CAZ/CAW":
+        return CABOS_CAZ
+    elif tipo_rede == "Rede Protegida":
+        return CABOS_PROTEGIDO
+    elif tipo_rede == "Rede Convencional":
+        return CABOS_CONVENCIONAL
+    return []
+
+def precisa_vao(tipo_rede):
+    return tipo_rede in ["Pré-Reunido", "Rede Compacta", "CAZ/CAW"]
 
 # ============================================================
-# INICIALIZAÇÃO DO ESTADO
-# ============================================================
-
-if "step" not in st.session_state:
-    st.session_state.step = 1
-
-for key in ["altura_poste", "angulo", "qtd_cabos", "localizacao",
-            "tipo_rede", "cabo_escolhido", "vao", "deriva_graus", "fim_linha",
-            "segundo_nivel", "altura_2n", "tipo_rede_2n", "cabo_2n",
-            "qtd_cabo_2n", "angulo_2n", "fim_linha_2n",
-            "rede_sec", "tipo_rede_sec", "altura_sec",
-            "qtd_fases_sec", "cabo_controle_sec", "cabo_neutro_sec",
-            "angulo_sec", "fim_linha_sec"]:
-    if key not in st.session_state:
-        if key in ["altura_poste", "qtd_cabos", "deriva_graus", "qtd_cabo_2n",
-                    "angulo_2n", "altura_sec", "qtd_fases_sec", "angulo_sec",
-                    "angulo", "vao"]:
-            st.session_state[key] = 0
-        elif key in ["fim_linha", "segundo_nivel", "rede_sec",
-                      "fim_linha_2n", "fim_linha_sec"]:
-            st.session_state[key] = False
-        else:
-            st.session_state[key] = ""
-
-
-# ============================================================
-# INTERFACE
+# CABEÇALHO
 # ============================================================
 
 st.title("Cálculo de Esforços Mecânicos em Postes")
 st.caption("Sistema para verificação de resistência de postes de concreto")
-st.divider()
+st.markdown("---")
 
-# ---------- STEP 1: ALTURA DO POSTE ----------
-if st.session_state.step == 1:
-    st.subheader("1. Altura do Poste")
-    alt = st.selectbox("Selecione a altura do poste (metros):", ALTURAS_POSTE,
-                       index=ALTURAS_POSTE.index(st.session_state.altura_poste) if st.session_state.altura_poste in ALTURAS_POSTE else 3)
-    h_util = altura_util(alt)
-    st.info(f"Altura útil calculada: **{h_util:.2f} m** (altura - 10% enterrado - 0,7m)")
-    if st.button("Continuar", type="primary"):
-        st.session_state.altura_poste = alt
-        st.session_state.step = 2
-        st.rerun()
+# ============================================================
+# FORMULÁRIO ÚNICO - TODAS AS PERGUNTAS DE UMA VEZ
+# ============================================================
 
-# ---------- STEP 2: ÂNGULO ----------
-elif st.session_state.step == 2:
-    st.subheader("2. Ângulo da Rede")
-    ang = st.number_input("Digite o ângulo em graus (0° a 360°):",
-                          min_value=0, max_value=360, value=st.session_state.angulo, step=1)
-    st.caption("O ângulo é medido a partir do norte (0°) no sentido horário")
-    col1, col2 = st.columns(2)
+config = st.radio(
+    "**Configuração da rede:**",
+    [
+        "Apenas Primária (1 nível)",
+        "Dois níveis de Primária",
+        "Apenas Secundária",
+        "Primária + Secundária",
+        "Dois níveis de Primária + Secundária",
+    ],
+    index=0,
+    horizontal=True,
+)
+
+st.markdown("---")
+
+# ============================================================
+# SEÇÃO 1: DADOS GERAIS DO POSTE
+# ============================================================
+
+with st.expander("**1. Dados Gerais do Poste**", expanded=True):
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 1
-            st.rerun()
+        altura_poste = st.selectbox("Altura do poste (m):", ALTURAS_POSTE, index=3)
+        h_util = altura_util(altura_poste)
+        st.caption(f"Altura útil: **{h_util:.2f} m**")
     with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.angulo = ang
-            st.session_state.step = 3
-            st.rerun()
+        localizacao = st.selectbox("Localização:", LOCATIONS, index=0)
+    with col3:
+        angulo_principal = st.number_input(
+            "Ângulo principal (0° a 360°):",
+            min_value=0, max_value=360, value=0, step=1,
+            help="Ângulo medido a partir do norte (0°) no sentido horário",
+        )
+    with col4:
+        qtd_cabos_princ = st.selectbox("Quantidade de cabos:", [1, 2, 3], index=0)
 
-# ---------- STEP 3: CABOS ----------
-elif st.session_state.step == 3:
-    st.subheader("3. Quantidade de Cabos")
-    qtd = st.selectbox("Quantos cabos?", [1, 2, 3],
-                       index=[1, 2, 3].index(st.session_state.qtd_cabos) if st.session_state.qtd_cabos in [1, 2, 3] else 0)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 2
-            st.rerun()
-    with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.qtd_cabos = qtd
-            st.session_state.step = 4
-            st.rerun()
+# ============================================================
+# SEÇÃO 2: PRIMEIRO NÍVEL (PRIMÁRIA)
+# ============================================================
 
-# ---------- STEP 4: LOCALIZAÇÃO ----------
-elif st.session_state.step == 4:
-    st.subheader("4. Localização")
-    loc = st.radio("Selecione o tipo de localização:", LOCATIONS,
-                   index=LOCATIONS.index(st.session_state.localizacao) if st.session_state.localizacao in LOCATIONS else 0)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 3
-            st.rerun()
-    with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.localizacao = loc
-            st.session_state.step = 5
-            st.rerun()
+if config in [
+    "Apenas Primária (1 nível)",
+    "Dois níveis de Primária",
+    "Primária + Secundária",
+    "Dois níveis de Primária + Secundária",
+]:
 
-# ---------- STEP 5: TIPO DE REDE ----------
-elif st.session_state.step == 5:
-    st.subheader("5. Tipo de Rede")
-    rede = st.selectbox("Selecione o tipo de rede:", TIPOS_REDE,
-                        index=TIPOS_REDE.index(st.session_state.tipo_rede) if st.session_state.tipo_rede in TIPOS_REDE else 0)
-
-    cabos_opcoes = CABOS_PRE_REUNIDO
-    cabos_default = CABOS_PRE_REUNIDO[1]
-    if rede == "Rede Compacta":
-        cabos_opcoes = CABOS_COMPACTA
-        cabos_default = CABOS_COMPACTA[1]
-    elif rede == "CAZ/CAW":
-        cabos_opcoes = CABOS_CAZ
-        cabos_default = CABOS_CAZ[0]
-    elif rede == "Rede Protegida":
-        cabos_opcoes = CABOS_PROTEGIDO
-        cabos_default = CABOS_PROTEGIDO[1]
-    elif rede == "Rede Convencional":
-        cabos_opcoes = CABOS_CONVENCIONAL
-        cabos_default = CABOS_CONVENCIONAL[0]
-
-    cabo_escolhido = st.selectbox("Tipo de cabo:", cabos_opcoes,
-                                  index=cabos_opcoes.index(st.session_state.cabo_escolhido) if st.session_state.cabo_escolhido in cabos_opcoes else 0)
-
-    if rede in ["Pré-Reunido", "Rede Compacta", "CAZ/CAW"]:
-        vao = st.number_input("Vão (metros):", min_value=5, max_value=600,
-                              value=st.session_state.vao if st.session_state.vao else 50, step=5)
-    else:
-        vao = st.session_state.vao
-
-    tracao_exib = obter_tracao(rede, cabo_escolhido, vao if rede in ["Pré-Reunido", "Rede Compacta", "CAZ/CAW"] else None)
-    st.info(f"Tração de projeto: **{tracao_exib:.0f} daN**")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 4
-            st.rerun()
-    with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.tipo_rede = rede
-            st.session_state.cabo_escolhido = cabo_escolhido
-            st.session_state.vao = vao
-            st.session_state.step = 6
-            st.rerun()
-
-# ---------- STEP 6: DERIVAÇÃO / FIM DE LINHA ----------
-elif st.session_state.step == 6:
-    st.subheader("6. Derivação")
-    fl = st.checkbox("Fim de linha (sem derivação)", value=st.session_state.fim_linha)
-    if not fl:
-        ang_der = st.slider("Ângulo de derivação (graus):", 0, 360,
-                            value=st.session_state.deriva_graus)
-    else:
-        ang_der = 0
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 5
-            st.rerun()
-    with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.fim_linha = fl
-            st.session_state.deriva_graus = ang_der
-            st.session_state.step = 7
-            st.rerun()
-
-# ---------- STEP 7: SEGUNDO NÍVEL DE PRIMÁRIA ----------
-elif st.session_state.step == 7:
-    st.subheader("7. Segundo Nível de Primária")
-    sn = st.radio("Possui segundo nível de primária?", ["Não", "Sim"],
-                  index=0 if not st.session_state.segundo_nivel else 1)
-    if sn == "Sim":
-        st.divider()
-        col1, col2 = st.columns(2)
-        with col1:
-            h2 = st.number_input("Altura útil (m):", min_value=0.0, max_value=20.0,
-                                 value=float(st.session_state.altura_2n) if st.session_state.altura_2n else 0.0, step=0.5)
-        with col2:
-            q2 = st.selectbox("Quantidade de cabos:", [1, 2, 3],
-                              index=[1, 2, 3].index(st.session_state.qtd_cabo_2n) if st.session_state.qtd_cabo_2n in [1, 2, 3] else 0)
-        r2 = st.selectbox("Tipo de rede:", TIPOS_REDE,
-                          index=TIPOS_REDE.index(st.session_state.tipo_rede_2n) if st.session_state.tipo_rede_2n in TIPOS_REDE else 0)
-
-        cabos_opcoes = CABOS_PRE_REUNIDO
-        if r2 == "Rede Compacta":
-            cabos_opcoes = CABOS_COMPACTA
-        elif r2 == "CAZ/CAW":
-            cabos_opcoes = CABOS_CAZ
-        elif r2 == "Rede Protegida":
-            cabos_opcoes = CABOS_PROTEGIDO
-        elif r2 == "Rede Convencional":
-            cabos_opcoes = CABOS_CONVENCIONAL
-
-        cb2 = st.selectbox("Tipo de cabo:", cabos_opcoes,
-                           index=cabos_opcoes.index(st.session_state.cabo_2n) if st.session_state.cabo_2n in cabos_opcoes else 0)
-
-        fl2 = st.checkbox("Fim de linha (sem derivação)", value=st.session_state.fim_linha_2n)
-        if not fl2:
-            ang2 = st.slider("Ângulo de derivação (graus):", 0, 360,
-                             value=st.session_state.angulo_2n)
-        else:
-            ang2 = 0
-    else:
-        h2 = q2 = r2 = cb2 = fl2 = ang2 = None
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 6
-            st.rerun()
-    with col2:
-        if st.button("Continuar", type="primary"):
-            st.session_state.segundo_nivel = (sn == "Sim")
-            if sn == "Sim":
-                st.session_state.altura_2n = h2
-                st.session_state.qtd_cabo_2n = q2
-                st.session_state.tipo_rede_2n = r2
-                st.session_state.cabo_2n = cb2
-                st.session_state.fim_linha_2n = fl2
-                st.session_state.angulo_2n = ang2
-            else:
-                for k in ["altura_2n", "tipo_rede_2n", "cabo_2n",
-                          "qtd_cabo_2n", "angulo_2n", "fim_linha_2n"]:
-                    st.session_state[k] = "" if k in ["tipo_rede_2n", "cabo_2n"] else 0
-            st.session_state.step = 8
-            st.rerun()
-
-# ---------- STEP 8: REDE SECUNDÁRIA ----------
-elif st.session_state.step == 8:
-    st.subheader("8. Rede Secundária")
-    rs = st.radio("Possui rede secundária?", ["Não", "Sim"],
-                  index=0 if not st.session_state.rede_sec else 1)
-    if rs == "Sim":
-        st.divider()
-        rts = st.selectbox("Tipo de rede:", TIPOS_REDE,
-                           index=TIPOS_REDE.index(st.session_state.tipo_rede_sec) if st.session_state.tipo_rede_sec in TIPOS_REDE else 0)
-
-        col_a, col_b = st.columns(2)
+    with st.expander("**2. Primeiro Nível (Primária)**", expanded=True):
+        col_a, col_b, col_c = st.columns(3)
         with col_a:
-            h_sec = st.number_input("Altura (m):", min_value=0.0, max_value=20.0,
-                                    value=float(st.session_state.altura_sec) if st.session_state.altura_sec else 0.0, step=0.5)
+            rede_1n = st.selectbox(
+                "Tipo de rede:", TIPOS_REDE, index=0, key="rede_1n"
+            )
         with col_b:
-            qf = st.selectbox("Quantidade de fases:", [1, 2, 3],
-                              index=[1, 2, 3].index(st.session_state.qtd_fases_sec) if st.session_state.qtd_fases_sec in [1, 2, 3] else 0)
+            cabos_disp = cabos_para_rede(rede_1n)
+            cabo_1n = st.selectbox("Tipo de cabo:", cabos_disp, key="cabo_1n")
+        with col_c:
+            vao_1n = (
+                st.number_input(
+                    "Vão (m):", min_value=5, max_value=600, value=50, step=5, key="vao_1n"
+                )
+                if precisa_vao(rede_1n)
+                else st.caption("Vão: N/A")
+            )
 
-        cc = st.selectbox("Cabo de controle:", CABOS_CONVENCIONAL,
-                          index=CABOS_CONVENCIONAL.index(st.session_state.cabo_controle_sec) if st.session_state.cabo_controle_sec in CABOS_CONVENCIONAL else 0)
-        cn = st.selectbox("Cabo do neutro:", CABOS_CONVENCIONAL,
-                          index=CABOS_CONVENCIONAL.index(st.session_state.cabo_neutro_sec) if st.session_state.cabo_neutro_sec in CABOS_CONVENCIONAL else 0)
+        st.markdown("#### Derivação do Primeiro Nível")
+        col_d, col_e = st.columns(2)
+        with col_d:
+            fim_linha_1n = st.checkbox("Fim de linha (sem derivação)", key="fl_1n")
+        with col_e:
+            ang_der_1n = (
+                0
+                if fim_linha_1n
+                else st.slider(
+                    "Ângulo de derivação (graus):",
+                    0, 360, value=0, key="ang_der_1n",
+                )
+            )
 
-        fl_s = st.checkbox("Fim de linha (sem derivação)", value=st.session_state.fim_linha_sec)
-        if not fl_s:
-            ang_s = st.slider("Ângulo de derivação (graus):", 0, 360,
-                              value=st.session_state.angulo_sec)
+        st.markdown("#### Cabos que derivam do Primeiro Nível")
+        cabo_deriv_1n = st.radio(
+            "Os cabos que derivam são os mesmos do primeiro nível ou diferentes?",
+            ["Mesmos cabos", "Cabos diferentes"],
+            horizontal=True,
+            key="deriv_1n_opcao",
+        )
+
+        if cabo_deriv_1n == "Cabos diferentes":
+            col_f, col_g, col_h = st.columns(3)
+            with col_f:
+                rede_deriv_1n = st.selectbox(
+                    "Tipo de rede (derivação):", TIPOS_REDE, index=0, key="rede_deriv_1n"
+                )
+            with col_g:
+                cabos_deriv_disp = cabos_para_rede(rede_deriv_1n)
+                cabo_deriv_1n_tipo = st.selectbox(
+                    "Tipo de cabo:", cabos_deriv_disp, key="cabo_deriv_1n_tipo"
+                )
+            with col_h:
+                if precisa_vao(rede_deriv_1n):
+                    vao_deriv_1n = st.number_input(
+                        "Vão (derivação):",
+                        min_value=5, max_value=600, value=50, step=5, key="vao_deriv_1n",
+                    )
+                else:
+                    st.caption("Vão: N/A")
+                    vao_deriv_1n = None
         else:
-            ang_s = 0
+            rede_deriv_1n = rede_1n
+            cabo_deriv_1n_tipo = cabo_1n
+
+# ============================================================
+# SEÇÃO 3: SEGUNDO NÍVEL DE PRIMÁRIA
+# ============================================================
+
+if config in ["Dois níveis de Primária", "Dois níveis de Primária + Secundária"]:
+
+    with st.expander("**3. Segundo Nível de Primária**", expanded=True):
+        col_i, col_j, col_k = st.columns(3)
+        with col_i:
+            altura_2n = st.number_input(
+                "Altura útil (m):", min_value=0.0, max_value=20.0, value=6.0, step=0.5, key="altura_2n"
+            )
+        with col_j:
+            rede_2n = st.selectbox(
+                "Tipo de rede:", TIPOS_REDE, index=0, key="rede_2n"
+            )
+        with col_k:
+            qtd_cabos_2n = st.selectbox("Quantidade de cabos:", [1, 2, 3], index=0, key="qtd_2n")
+
+        col_l, col_m = st.columns(2)
+        with col_l:
+            cabos_2n_disp = cabos_para_rede(rede_2n)
+            cabo_2n = st.selectbox("Tipo de cabo:", cabos_2n_disp, key="cabo_2n")
+        with col_m:
+            if precisa_vao(rede_2n):
+                vao_2n = st.number_input(
+                    "Vão (m):", min_value=5, max_value=600, value=50, step=5, key="vao_2n"
+                )
+            else:
+                st.caption("Vão: N/A")
+                vao_2n = None
+
+        st.markdown("#### Derivação do Segundo Nível")
+        col_n, col_o = st.columns(2)
+        with col_n:
+            fim_linha_2n = st.checkbox("Fim de linha (sem derivação)", key="fl_2n")
+        with col_o:
+            ang_der_2n = (
+                0
+                if fim_linha_2n
+                else st.slider(
+                    "Ângulo de derivação (graus):",
+                    0, 360, value=0, key="ang_der_2n",
+                )
+            )
+
+        st.markdown("#### Cabos que derivam do Segundo Nível")
+        cabo_deriv_2n = st.radio(
+            "Os cabos que derivam são os mesmos do segundo nível ou diferentes?",
+            ["Mesmos cabos", "Cabos diferentes"],
+            horizontal=True,
+            key="deriv_2n_opcao",
+        )
+
+        if cabo_deriv_2n == "Cabos diferentes":
+            col_p, col_q, col_r = st.columns(3)
+            with col_p:
+                rede_deriv_2n = st.selectbox(
+                    "Tipo de rede (derivação):", TIPOS_REDE, index=0, key="rede_deriv_2n"
+                )
+            with col_q:
+                cabos_deriv_2n_disp = cabos_para_rede(rede_deriv_2n)
+                cabo_deriv_2n_tipo = st.selectbox(
+                    "Tipo de cabo:", cabos_deriv_2n_disp, key="cabo_deriv_2n_tipo"
+                )
+            with col_r:
+                if precisa_vao(rede_deriv_2n):
+                    vao_deriv_2n = st.number_input(
+                        "Vão (derivação):",
+                        min_value=5, max_value=600, value=50, step=5, key="vao_deriv_2n",
+                    )
+                else:
+                    st.caption("Vão: N/A")
+                    vao_deriv_2n = None
+        else:
+            rede_deriv_2n = rede_2n
+            cabo_deriv_2n_tipo = cabo_2n
+
+# ============================================================
+# SEÇÃO 4: REDE SECUNDÁRIA
+# ============================================================
+
+if config in ["Apenas Secundária", "Primária + Secundária", "Dois níveis de Primária + Secundária"]:
+
+    with st.expander("**4. Rede Secundária**", expanded=True):
+        col_s, col_t, col_u = st.columns(3)
+        with col_s:
+            rede_sec = st.selectbox(
+                "Tipo de rede:", TIPOS_REDE, index=4, key="rede_sec"
+            )
+        with col_t:
+            altura_sec = st.number_input(
+                "Altura (m):", min_value=0.0, max_value=20.0, value=5.0, step=0.5, key="altura_sec"
+            )
+        with col_u:
+            qtd_fases_sec = st.selectbox(
+                "Quantidade de fases:", [1, 2, 3], index=0, key="qtd_fases_sec"
+            )
+
+        col_v, col_w = st.columns(2)
+        with col_v:
+            cabo_controle_sec = st.selectbox(
+                "Cabo de controle:", CABOS_CONVENCIONAL, index=0, key="cabo_controle_sec"
+            )
+        with col_w:
+            cabo_neutro_sec = st.selectbox(
+                "Cabo do neutro:", CABOS_CONVENCIONAL, index=1, key="cabo_neutro_sec"
+            )
+
+        st.markdown("#### Derivação da Rede Secundária")
+        col_x, col_y = st.columns(2)
+        with col_x:
+            fim_linha_sec = st.checkbox("Fim de linha (sem derivação)", key="fl_sec")
+        with col_y:
+            ang_der_sec = (
+                0
+                if fim_linha_sec
+                else st.slider(
+                    "Ângulo de derivação (graus):",
+                    0, 360, value=0, key="ang_der_sec",
+                )
+            )
+
+st.markdown("---")
+
+# ============================================================
+# RESULTADO DINÂMICO
+# ============================================================
+
+st.subheader("Resultado do Cálculo", divider="red")
+
+# --- Processar forças ---
+fx_total = 0.0
+fy_total = 0.0
+tem_primaria = config in [
+    "Apenas Primária (1 nível)",
+    "Dois níveis de Primária",
+    "Primária + Secundária",
+    "Dois níveis de Primária + Secundária",
+]
+tem_2n = config in ["Dois níveis de Primária", "Dois níveis de Primária + Secundária"]
+tem_sec = config in ["Apenas Secundária", "Primária + Secundária", "Dois níveis de Primária + Secundária"]
+
+resumo_linhas = []
+
+if tem_primaria:
+    tracao_1n = obter_tracao(rede_1n, cabo_1n, vao_1n if precisa_vao(rede_1n) else None)
+    H_1n = h_util * 0.85
+    f_1n = tracao_transf(tracao_1n, h_util, H_1n, qtd_cabos_princ)
+    ang_rad_1n = math.radians(angulo_principal)
+    fx_1n = f_1n * math.cos(ang_rad_1n)
+    fy_1n = f_1n * math.sin(ang_rad_1n)
+    fx_total += fx_1n
+    fy_total += fy_1n
+    resumo_linhas.append(f"1º Nível: **{rede_1n}** / **{cabo_1n}** → {f_1n:.0f} daN @ {angulo_principal}°")
+
+    # Derivação do primeiro nível
+    ang_der_1n_atual = ang_der_1n if not fim_linha_1n else 0
+    if not fim_linha_1n and ang_der_1n_atual > 0:
+        if cabo_deriv_1n == "Cabos diferentes":
+            vao_deriv_usar_1n = vao_deriv_1n if "vao_deriv_1n" in dir() else vao_1n
+            tracao_d1 = obter_tracao(
+                rede_deriv_1n,
+                cabo_deriv_1n_tipo,
+                vao_deriv_usar_1n if precisa_vao(rede_deriv_1n) else None,
+            )
+            f_d1 = tracao_transf(tracao_d1, h_util, H_1n, qtd_cabos_princ)
+        else:
+            f_d1 = f_1n * 0.5
+
+        ang_der_rad_1n = math.radians(ang_der_1n_atual)
+        fx_d1 = f_d1 * math.cos(ang_rad_1n + ang_der_rad_1n)
+        fy_d1 = f_d1 * math.sin(ang_rad_1n + ang_der_rad_1n)
+        fx_total += fx_d1
+        fy_total += fy_d1
+        resumo_linhas.append(
+            f"  └ Derivação: {ang_der_1n_atual}° ({cabo_deriv_1n}) → {f_d1:.0f} daN"
+        )
+
+if tem_2n:
+    tracao_2n = obter_tracao(rede_2n, cabo_2n, vao_2n if precisa_vao(rede_2n) else None)
+    f_2n = tracao_transf(tracao_2n, h_util, altura_2n, qtd_cabos_2n)
+    ang_2n_rad = math.radians(angulo_principal)
+    fx_2n = f_2n * math.cos(ang_2n_rad)
+    fy_2n = f_2n * math.sin(ang_2n_rad)
+    fx_total += fx_2n
+    fy_total += fy_2n
+    resumo_linhas.append(f"2º Nível: **{rede_2n}** / **{cabo_2n}** → {f_2n:.0f} daN @ {angulo_principal}°")
+
+    ang_der_2n_atual = ang_der_2n if not fim_linha_2n else 0
+    if not fim_linha_2n and ang_der_2n_atual > 0:
+        if cabo_deriv_2n == "Cabos diferentes":
+            vao_deriv_usar_2n = vao_deriv_2n if "vao_deriv_2n" in dir() else vao_2n
+            tracao_d2 = obter_tracao(
+                rede_deriv_2n,
+                cabo_deriv_2n_tipo,
+                vao_deriv_usar_2n if precisa_vao(rede_deriv_2n) else None,
+            )
+            f_d2 = tracao_transf(tracao_d2, h_util, altura_2n, qtd_cabos_2n)
+        else:
+            f_d2 = f_2n * 0.5
+
+        ang_der_rad_2n = math.radians(ang_der_2n_atual)
+        fx_d2 = f_d2 * math.cos(ang_2n_rad + ang_der_rad_2n)
+        fy_d2 = f_d2 * math.sin(ang_2n_rad + ang_der_rad_2n)
+        fx_total += fx_d2
+        fy_total += fy_d2
+        resumo_linhas.append(
+            f"  └ Derivação: {ang_der_2n_atual}° ({cabo_deriv_2n}) → {f_d2:.0f} daN"
+        )
+
+if tem_sec:
+    tracao_fase = obter_tracao(rede_sec, cabo_controle_sec)
+    tracao_neutro = obter_tracao(rede_sec, cabo_neutro_sec)
+    f_fase_sec = tracao_transf(tracao_fase, h_util, altura_sec, qtd_fases_sec)
+    f_neutro_sec = tracao_transf(tracao_neutro, h_util, altura_sec, 1)
+
+    ang_sec_rad = math.radians(ang_der_sec if not fim_linha_sec else 0)
+    fx_fase_sec = f_fase_sec * math.cos(ang_sec_rad)
+    fy_fase_sec = f_fase_sec * math.sin(ang_sec_rad)
+    fx_neutro_sec = f_neutro_sec * math.cos(ang_sec_rad)
+    fy_neutro_sec = f_neutro_sec * math.sin(ang_sec_rad)
+
+    fx_total += fx_fase_sec + fx_neutro_sec
+    fy_total += fy_fase_sec + fy_neutro_sec
+    resumo_linhas.append(
+        f"Rede Sec.: **{rede_sec}** / Controle: **{cabo_controle_sec}** / Neutro: **{cabo_neutro_sec}** → "
+        f"{f_fase_sec + f_neutro_sec:.0f} daN"
+    )
+
+    if not fim_linha_sec and ang_der_sec > 0:
+        f_sec_d = (f_fase_sec + f_neutro_sec) * 0.5
+        ang_sec_d_rad = math.radians(ang_der_sec)
+        fx_sd = f_sec_d * math.cos(ang_sec_d_rad)
+        fy_sd = f_sec_d * math.sin(ang_sec_d_rad)
+        fx_total += fx_sd
+        fy_total += fy_sd
+        resumo_linhas.append(f"  └ Derivação: {ang_der_sec}° → {f_sec_d:.0f} daN")
+
+# --- Resultante final ---
+magnitude, ang_resultante = calc_resultante([fx_total], [fy_total])
+
+# ============================================================
+# EXIBIR RESULTADO EM DESTAQUE
+# ============================================================
+
+col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+with col_r1:
+    st.metric("Força Resultante", f"{magnitude:.1f} daN", delta_color="off")
+with col_r2:
+    st.metric("Ângulo Resultante", f"{ang_resultante:.1f}°", delta_color="off")
+with col_r3:
+    st.metric("Componente X", f"{fx_total:.1f} daN", delta_color="off")
+with col_r4:
+    st.metric("Componente Y", f"{fy_total:.1f} daN", delta_color="off")
+
+st.markdown("---")
+
+col_rec1, col_rec2 = st.columns([2, 1])
+with col_rec1:
+    st.markdown("### Resumo dos Esforços")
+    for linha in resumo_linhas:
+        st.markdown(f"- {linha}")
+    st.markdown(f"**Poste:** {altura_poste}m | **Altura útil:** {h_util:.2f}m | **Local:** {localizacao}")
+
+with col_rec2:
+    st.markdown("### Recomendação")
+    if magnitude == 0:
+        st.info("Preencha os parâmetros acima para calcular.")
+    elif magnitude <= 300:
+        st.success(f"Poste de **9m** ou **10m** é suficiente")
+        st.caption("Carga <= 300 daN")
+    elif magnitude <= 500:
+        st.success(f"Poste de **11m** ou **12m** recomendado")
+        st.caption("Carga <= 500 daN")
+    elif magnitude <= 800:
+        st.warning(f"Poste de **14m** é recomendado")
+        st.caption("Carga <= 800 daN")
+    elif magnitude <= 1200:
+        st.warning(f"Poste de **16m** é necessário")
+        st.caption("Carga <= 1200 daN")
     else:
-        rts = h_sec = qf = cc = cn = fl_s = ang_s = None
+        st.error(f"Carga de {magnitude:.0f} daN excede postes padrão")
+        st.caption("Consulte engenharia")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Voltar"):
-            st.session_state.step = 7
-            st.rerun()
-    with col2:
-        if st.button("Calcular", type="primary"):
-            st.session_state.rede_sec = (rs == "Sim")
-            if rs == "Sim":
-                st.session_state.tipo_rede_sec = rts
-                st.session_state.altura_sec = h_sec
-                st.session_state.qtd_fases_sec = qf
-                st.session_state.cabo_controle_sec = cc
-                st.session_state.cabo_neutro_sec = cn
-                st.session_state.fim_linha_sec = fl_s
-                st.session_state.angulo_sec = ang_s
-            st.session_state.step = 9
-            st.rerun()
+# ============================================================
+# TABELA COMPARATIVA
+# ============================================================
 
-# ---------- STEP 9: RESULTADO ----------
-elif st.session_state.step == 9:
-    st.subheader("9. Resultado do Cálculo")
+if magnitude > 0:
+    st.markdown("---")
+    st.markdown("### Comparativo de Postes")
 
-    h_poste = st.session_state.altura_poste
-    h_util = altura_util(h_poste)
-    ang_principal = st.session_state.angulo
-    qtd_cabos = st.session_state.qtd_cabos
-    local = st.session_state.localizacao
-    tipo_rede = st.session_state.tipo_rede
-    deriva = st.session_state.deriva_graus
-    fim_linha = st.session_state.fim_linha
+    cargas_limite = [300, 500, 800, 1200]
+    postes_sugeridos = ["9m / 10m", "11m / 12m", "14m", "16m"]
 
-    # --- Cálculo principal ---
-    cabo_principal = st.session_state.cabo_escolhido or "PB50"
-    vao_principal = st.session_state.vao or 50
-    tracao_base = obter_tracao(tipo_rede, cabo_principal, vao_principal)
-    H_CABO_PRINCIPAL = h_util * 0.85
-    f_principal = tracao_transf(tracao_base, h_util, H_CABO_PRINCIPAL, qtd_cabos)
+    dados_comp = {
+        "Poste": postes_sugeridos,
+        "Carga Máx. (daN)": cargas_limite,
+        "Atende": [
+            "✅" if magnitude <= c else "❌" for c in cargas_limite
+        ],
+    }
 
-    ang_rad = math.radians(ang_principal)
-    fx_principal = f_principal * math.cos(ang_rad)
-    fy_principal = f_principal * math.sin(ang_rad)
-
-    if fim_linha or deriva == 0:
-        fx_total, fy_total = fx_principal, fy_principal
-    else:
-        ang_der_rad = math.radians(deriva)
-        f_deriv = f_principal * 0.5
-        fx_deriv = f_deriv * math.cos(ang_rad + ang_der_rad)
-        fy_deriv = f_deriv * math.sin(ang_rad + ang_der_rad)
-        fx_total, fy_total = fx_principal + fx_deriv, fy_principal + fy_deriv
-
-    # --- Segundo nível ---
-    if st.session_state.segundo_nivel:
-        h2 = st.session_state.altura_2n
-        q2 = st.session_state.qtd_cabo_2n
-        r2 = st.session_state.tipo_rede_2n
-        cb2 = st.session_state.cabo_2n
-        fl2 = st.session_state.fim_linha_2n
-        ang2 = st.session_state.angulo_2n
-
-        tracao2 = obter_tracao(r2, cb2, vaio=50)
-        f2 = tracao_transf(tracao2, h_util, h2, q2)
-        ang2_rad = math.radians(ang2)
-        fx2 = f2 * math.cos(ang2_rad)
-        fy2 = f2 * math.sin(ang2_rad)
-
-        if not fl2 and ang2 != 0:
-            f2d = f2 * 0.5
-            ang2d_rad = math.radians(ang2)
-            fx2d = f2d * math.cos(ang2d_rad)
-            fy2d = f2d * math.sin(ang2d_rad)
-            fx_total += fx2 + fx2d
-            fy_total += fy2 + fy2d
-        else:
-            fx_total += fx2
-            fy_total += fy2
-
-    # --- Rede secundária ---
-    if st.session_state.rede_sec:
-        rts = st.session_state.tipo_rede_sec
-        h_sec = st.session_state.altura_sec
-        qf = st.session_state.qtd_fases_sec
-        cc = st.session_state.cabo_controle_sec
-        cn = st.session_state.cabo_neutro_sec
-        fl_s = st.session_state.fim_linha_sec
-        ang_s = st.session_state.angulo_sec
-
-        tracao_fase = obter_tracao(rts, cc, vaio=50)
-        tracao_neutro = obter_tracao(rts, cn, vaio=50)
-
-        f_fase = tracao_transf(tracao_fase, h_util, h_sec, qf)
-        f_neutro = tracao_transf(tracao_neutro, h_util, h_sec, 1)
-
-        ang_sec_rad = math.radians(ang_s)
-        fx_fase = f_fase * math.cos(ang_sec_rad)
-        fy_fase = f_fase * math.sin(ang_sec_rad)
-        fx_neutro = f_neutro * math.cos(ang_sec_rad)
-        fy_neutro = f_neutro * math.sin(ang_sec_rad)
-
-        fx_total += fx_fase + fx_neutro
-        fy_total += fy_fase + fy_neutro
-
-        if not fl_s and ang_s != 0:
-            f_sec_d = (f_fase + f_neutro) * 0.5
-            ang_sd_rad = math.radians(ang_s)
-            fx_sd = f_sec_d * math.cos(ang_sd_rad)
-            fy_sd = f_sec_d * math.sin(ang_sd_rad)
-            fx_total += fx_sd
-            fy_total += fy_sd
-
-    # --- Resultante final ---
-    magnitude, ang_resultante = calc_resultante([fx_total], [fy_total])
-
-    st.divider()
-    colr1, colr2 = st.columns(2)
-    with colr1:
-        st.metric("Força Resultante", f"{magnitude:.1f} daN")
-        st.metric("Ângulo Resultante", f"{ang_resultante:.1f}°")
-    with colr2:
-        st.metric("Componente X", f"{fx_total:.1f} daN")
-        st.metric("Componente Y", f"{fy_total:.1f} daN")
-
-    st.divider()
-    st.subheader("Resumo dos Parâmetros")
-    st.write(f"**Poste:** {h_poste}m | **Altura útil:** {h_util:.2f}m")
-    st.write(f"**Rede:** {tipo_rede} | **Local:** {local}")
-    st.write(f"**Cabos:** {qtd_cabos} | **Ângulo principal:** {ang_principal}°")
-    st.write(f"**Derivação:** {'Fim de linha' if fim_linha else f'{deriva}°'}")
-    if st.session_state.segundo_nivel:
-        st.write(f"**2º nível:** {st.session_state.tipo_rede_2n} / {st.session_state.cabo_2n}")
-    if st.session_state.rede_sec:
-        st.write(f"**Rede secundária:** {st.session_state.tipo_rede_sec} / Controle: {st.session_state.cabo_controle_sec} / Neutro: {st.session_state.cabo_neutro_sec}")
-
-    if magnitude > 0:
-        st.divider()
-        st.subheader("Recomendação de Poste")
-        if magnitude <= 300:
-            st.success("Poste de **9m** ou **10m** é suficiente (carga <= 300 daN)")
-        elif magnitude <= 500:
-            st.success("Poste de **11m** ou **12m** recomendado (carga <= 500 daN)")
-        elif magnitude <= 800:
-            st.warning("Poste de **14m** é recomendado (carga <= 800 daN)")
-        elif magnitude <= 1200:
-            st.warning("Poste de **16m** é necessário (carga <= 1200 daN)")
-        else:
-            st.error(f"Carga de {magnitude:.0f} daN excede a capacidade de postes padrão. Consulte engenharia.")
-
-    if st.button("Novo Cálculo", type="primary"):
-        for key in list(st.session_state.keys()):
-            if key != "step":
-                del st.session_state[key]
-        st.session_state.step = 1
-        st.rerun()
+    st.dataframe(dados_comp, use_container_width=True, hide_index=True)
