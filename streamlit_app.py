@@ -262,157 +262,146 @@ tem_2n = config in ["Dois níveis de Primária", "Dois níveis de Primária + Se
 tem_sec = config in ["Apenas Secundária", "Primária + Secundária",
                       "Dois níveis de Primária + Secundária"]
 
-tab_list = []
 if tem_1n:
-    tab_list.append("1° Nivel (Primaria)")
-if tem_2n:
-    tab_list.append("2° Nivel (Primaria)")
-if tem_sec:
-    tab_list.append("Rede Secundaria")
-tabs = st.tabs(tab_list) if tab_list else []
-ti = 0
-
-if tem_1n:
-    with tabs[ti]:
-        ti += 1
-        alturas_1 = ALTURAS_NIVEIS[altura_poste]["primaria"]
-        h_1n = st.radio("Altura de montagem (m):", alturas_1, index=0, horizontal=True, key="1n_alt")
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            campo_rede_cabo_vao("1n")
-        with col_b:
-            st.markdown("##### Ângulo de Chegada (Fonte)")
-            st.slider("0° a 360°:", 0, 360, value=0, key="1n_ang_chegada")
-        with col_c:
-            fim_1n = st.checkbox("Fim de linha?", key="1n_fim_linha")
-        if not fim_1n:
-            st.markdown("---")
-            col_d, col_e = st.columns(2)
-            with col_d:
-                st.markdown("##### Ângulo de Saida (Carga)")
-                st.slider("0° a 360°:", 0, 360, value=0, key="1n_ang_saida")
-            with col_e:
-                cabos_iguais = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
-                                        horizontal=True, key="1n_cabos_iguais")
-            if cabos_iguais == "Diferentes":
-                campo_saida("1n")
-        processar_nivel("1n", h_1n)
-
-if tem_2n:
-    with tabs[ti]:
-        ti += 1
-        mesm_ang = st.checkbox("Mesmo angulo de chegada do 1° nivel?", key="2n_mesmo_ang")
-        if mesm_ang:
-            ang_ref = st.session_state.get("1n_ang_chegada", 0)
-            st.markdown(f"Angulo de Chegada (Fonte): **{ang_ref}°** (herdado do 1° nivel)")
-            st.session_state["2n_ang_chegada"] = ang_ref
-        else:
-            st.slider("Angulo de chegada:", 0, 360, value=0, key="2n_ang_chegada")
-        alturas_2 = ALTURAS_NIVEIS[altura_poste]["primaria"]
-        h_2n = st.radio("Altura de montagem (m):", alturas_2, index=1, horizontal=True, key="2n_alt")
-        col_d, col_e, col_f = st.columns(3)
+    st.markdown("### \u25C6 PRIMEIRO PONTO")
+    alturas_1 = ALTURAS_NIVEIS[altura_poste]["primaria"]
+    h_1n = st.radio("Altura de montagem (m):", alturas_1, index=0, horizontal=True, key="1n_alt")
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        campo_rede_cabo_vao("1n")
+    with col_b:
+        st.markdown("##### Ângulo de Chegada (Fonte)")
+        st.slider("0° a 360°:", 0, 360, value=0, key="1n_ang_chegada")
+    with col_c:
+        fim_1n = st.checkbox("Fim de linha?", key="1n_fim_linha")
+    if not fim_1n:
+        st.markdown("---")
+        col_d, col_e = st.columns(2)
         with col_d:
-            campo_rede_cabo_vao("2n")
+            st.markdown("##### Ângulo de Saida (Carga)")
+            st.slider("0° a 360°:", 0, 360, value=0, key="1n_ang_saida")
         with col_e:
-            st.markdown("##### Ângulo de Chegada (Fonte)")
-            if not mesm_ang:
-                st.caption("(ajuste acima)")
-            else:
-                st.caption(f"(herdado: {ang_ref}°)")
-        with col_f:
-            fim_2n = st.checkbox("Fim de linha?", key="2n_fim_linha")
-        if not fim_2n:
-            st.markdown("---")
-            col_g, col_h = st.columns(2)
-            with col_g:
-                st.markdown("##### Ângulo de Saida (Carga)")
-                st.slider("0° a 360°:", 0, 360, value=0, key="2n_ang_saida")
-            with col_h:
-                cabos_iguais_2n = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
-                                           horizontal=True, key="2n_cabos_iguais")
-            if cabos_iguais_2n == "Diferentes":
-                campo_saida("2n")
-        processar_nivel("2n", h_2n)
+            cabos_iguais = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
+                                    horizontal=True, key="1n_cabos_iguais")
+        if cabos_iguais == "Diferentes":
+            campo_saida("1n")
+    processar_nivel("1n", h_1n)
+    st.markdown("---")
+
+if tem_2n:
+    st.markdown("### \u25C6 SEGUNDO PONTO")
+    mesm_ang = st.checkbox("Mesmo angulo de chegada do 1° nivel?", key="2n_mesmo_ang")
+    if mesm_ang:
+        ang_ref = st.session_state.get("1n_ang_chegada", 0)
+        st.markdown(f"Angulo de Chegada (Fonte): **{ang_ref}°** (herdado do 1° nivel)")
+        st.session_state["2n_ang_chegada"] = ang_ref
+    else:
+        st.slider("Angulo de chegada:", 0, 360, value=0, key="2n_ang_chegada")
+    alturas_2 = ALTURAS_NIVEIS[altura_poste]["primaria"]
+    h_2n = st.radio("Altura de montagem (m):", alturas_2, index=1, horizontal=True, key="2n_alt")
+    col_d, col_e, col_f = st.columns(3)
+    with col_d:
+        campo_rede_cabo_vao("2n")
+    with col_e:
+        st.markdown("##### Ângulo de Chegada (Fonte)")
+        if not mesm_ang:
+            st.caption("(ajuste acima)")
+        else:
+            st.caption(f"(herdado: {ang_ref}°)")
+    with col_f:
+        fim_2n = st.checkbox("Fim de linha?", key="2n_fim_linha")
+    if not fim_2n:
+        st.markdown("---")
+        col_g, col_h = st.columns(2)
+        with col_g:
+            st.markdown("##### Ângulo de Saida (Carga)")
+            st.slider("0° a 360°:", 0, 360, value=0, key="2n_ang_saida")
+        with col_h:
+            cabos_iguais_2n = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
+                                       horizontal=True, key="2n_cabos_iguais")
+        if cabos_iguais_2n == "Diferentes":
+            campo_saida("2n")
+    processar_nivel("2n", h_2n)
+    st.markdown("---")
 
 if tem_sec:
-    with tabs[ti]:
-        ti += 1
-        mesm_ang_sec = st.checkbox("Mesmo angulo de chegada do 1° nivel?", key="sec_mesmo_ang")
-        if mesm_ang_sec:
-            ang_ref_sec = st.session_state.get("1n_ang_chegada", 0)
-            st.markdown(f"Angulo de Chegada (Fonte): **{ang_ref_sec}°** (herdado do 1° nivel)")
-            st.session_state["sec_ang_chegada"] = ang_ref_sec
-        else:
-            st.slider("Angulo de chegada:", 0, 360, value=0, key="sec_ang_chegada")
-        alturas_3 = ALTURAS_NIVEIS[altura_poste]["secundaria"]
-        h_sec = st.radio("Altura de montagem (m):", alturas_3, index=0, horizontal=True, key="sec_alt")
-        col_i, col_j, col_k = st.columns(3)
-        with col_i:
-            campo_rede_cabo_vao("sec", padrao_rede=4)
-        with col_j:
-            st.radio("Quantas fases?", [1, 2, 3], index=1, horizontal=True, key="sec_qtd_fases")
-            st.selectbox("Bitola do neutro:", CABOS_CONVENCIONAL, index=1, key="sec_cabo_neutro")
-        with col_k:
-            tem_controle_sec = st.checkbox("Possui Controle?", key="sec_tem_controle")
-            if tem_controle_sec:
-                st.selectbox("Bitola do controle:", CABOS_CONVENCIONAL, index=0, key="sec_cabo_controle")
-            fim_sec = st.checkbox("Fim de linha?", key="sec_fim_linha")
-        if not fim_sec:
-            st.markdown("---")
-            col_l, col_m = st.columns(2)
-            with col_l:
-                st.markdown("##### Ângulo de Saida (Carga)")
-                st.slider("0° a 360°:", 0, 360, value=0, key="sec_ang_saida")
-            with col_m:
-                cabos_iguais_sec = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
-                                            horizontal=True, key="sec_cabos_iguais")
+    st.markdown("### \u25C6 TERCEIRO PONTO")
+    mesm_ang_sec = st.checkbox("Mesmo angulo de chegada do 1° nivel?", key="sec_mesmo_ang")
+    if mesm_ang_sec:
+        ang_ref_sec = st.session_state.get("1n_ang_chegada", 0)
+        st.markdown(f"Angulo de Chegada (Fonte): **{ang_ref_sec}°** (herdado do 1° nivel)")
+        st.session_state["sec_ang_chegada"] = ang_ref_sec
+    else:
+        st.slider("Angulo de chegada:", 0, 360, value=0, key="sec_ang_chegada")
+    alturas_3 = ALTURAS_NIVEIS[altura_poste]["secundaria"]
+    h_sec = st.radio("Altura de montagem (m):", alturas_3, index=0, horizontal=True, key="sec_alt")
+    col_i, col_j, col_k = st.columns(3)
+    with col_i:
+        campo_rede_cabo_vao("sec", padrao_rede=4)
+    with col_j:
+        st.radio("Quantas fases?", [1, 2, 3], index=1, horizontal=True, key="sec_qtd_fases")
+        st.selectbox("Bitola do neutro:", CABOS_CONVENCIONAL, index=1, key="sec_cabo_neutro")
+    with col_k:
+        tem_controle_sec = st.checkbox("Possui Controle?", key="sec_tem_controle")
+        if tem_controle_sec:
+            st.selectbox("Bitola do controle:", CABOS_CONVENCIONAL, index=0, key="sec_cabo_controle")
+        fim_sec = st.checkbox("Fim de linha?", key="sec_fim_linha")
+    if not fim_sec:
+        st.markdown("---")
+        col_l, col_m = st.columns(2)
+        with col_l:
+            st.markdown("##### Ângulo de Saida (Carga)")
+            st.slider("0° a 360°:", 0, 360, value=0, key="sec_ang_saida")
+        with col_m:
+            cabos_iguais_sec = st.radio("Cabos da saida:", ["Mesmos", "Diferentes"],
+                                        horizontal=True, key="sec_cabos_iguais")
+        if cabos_iguais_sec == "Diferentes":
+            campo_saida("sec")
+
+    ang_chegada_sec = st.session_state.get("sec_ang_chegada", 0)
+    rede_sec = st.session_state.get("sec_rede", "")
+    cabo_sec = st.session_state.get("sec_cabo", "")
+    vao_sec = st.session_state.get("sec_vao", None)
+    qtd_fases = st.session_state.get("sec_qtd_fases", 2)
+    cabo_neutro = st.session_state.get("sec_cabo_neutro", "A04")
+    tem_controle = st.session_state.get("sec_tem_controle", False)
+    fim_linha_sec = st.session_state.get("sec_fim_linha", False)
+
+    if rede_sec and cabo_sec and qtd_fases:
+        t_fase = obter_tracao(rede_sec, cabo_sec, vao_sec if precisa_vao(rede_sec) else None)
+        f_fases = tracao_transf(t_fase, altura_util(altura_poste), h_sec, int(qtd_fases))
+        t_neutro = obter_tracao(rede_sec, cabo_neutro, vao_sec if precisa_vao(rede_sec) else None)
+        f_neutro = tracao_transf(t_neutro, altura_util(altura_poste), h_sec, 1)
+        f_controle = 0
+        if tem_controle:
+            cabo_controle = st.session_state.get("sec_cabo_controle", "A02")
+            t_controle = obter_tracao(rede_sec, cabo_controle, vao_sec if precisa_vao(rede_sec) else None)
+            f_controle = tracao_transf(t_controle, altura_util(altura_poste), h_sec, 1)
+        f_total_sec = f_fases + f_neutro + f_controle
+        ang_rad_c = math.radians(ang_chegada_sec)
+        fx_total += f_total_sec * math.cos(ang_rad_c)
+        fy_total += f_total_sec * math.sin(ang_rad_c)
+        detalhe_sec = f"{rede_sec} / {cabo_sec} ({qtd_fases}f) / Neutro: {cabo_neutro}"
+        if tem_controle:
+            detalhe_sec += f" / Controle: {cabo_controle}"
+        resumo_linhas.append(f"**SEC** Chegada (Fonte): {detalhe_sec} -> {f_total_sec:.0f} daN @ {ang_chegada_sec}°")
+
+        if not fim_linha_sec:
+            ang_saida_sec = st.session_state.get("sec_ang_saida", 0)
+            cabos_iguais_sec = st.session_state.get("sec_cabos_iguais", "Mesmos")
             if cabos_iguais_sec == "Diferentes":
-                campo_saida("sec")
-
-        # Calculo especifico da Secundaria (fases + neutro + controle)
-        ang_chegada_sec = st.session_state.get("sec_ang_chegada", 0)
-        rede_sec = st.session_state.get("sec_rede", "")
-        cabo_sec = st.session_state.get("sec_cabo", "")
-        vao_sec = st.session_state.get("sec_vao", None)
-        qtd_fases = st.session_state.get("sec_qtd_fases", 2)
-        cabo_neutro = st.session_state.get("sec_cabo_neutro", "A04")
-        tem_controle = st.session_state.get("sec_tem_controle", False)
-        fim_linha_sec = st.session_state.get("sec_fim_linha", False)
-
-        if rede_sec and cabo_sec and qtd_fases:
-            t_fase = obter_tracao(rede_sec, cabo_sec, vao_sec if precisa_vao(rede_sec) else None)
-            f_fases = tracao_transf(t_fase, altura_util(altura_poste), h_sec, int(qtd_fases))
-            t_neutro = obter_tracao(rede_sec, cabo_neutro, vao_sec if precisa_vao(rede_sec) else None)
-            f_neutro = tracao_transf(t_neutro, altura_util(altura_poste), h_sec, 1)
-            f_controle = 0
-            if tem_controle:
-                cabo_controle = st.session_state.get("sec_cabo_controle", "A02")
-                t_controle = obter_tracao(rede_sec, cabo_controle, vao_sec if precisa_vao(rede_sec) else None)
-                f_controle = tracao_transf(t_controle, altura_util(altura_poste), h_sec, 1)
-            f_total_sec = f_fases + f_neutro + f_controle
-            ang_rad_c = math.radians(ang_chegada_sec)
-            fx_total += f_total_sec * math.cos(ang_rad_c)
-            fy_total += f_total_sec * math.sin(ang_rad_c)
-            detalhe_sec = f"{rede_sec} / {cabo_sec} ({qtd_fases}f) / Neutro: {cabo_neutro}"
-            if tem_controle:
-                detalhe_sec += f" / Controle: {cabo_controle}"
-            resumo_linhas.append(f"**SEC** Chegada (Fonte): {detalhe_sec} -> {f_total_sec:.0f} daN @ {ang_chegada_sec}°")
-
-            if not fim_linha_sec:
-                ang_saida_sec = st.session_state.get("sec_ang_saida", 0)
-                cabos_iguais_sec = st.session_state.get("sec_cabos_iguais", "Mesmos")
-                if cabos_iguais_sec == "Diferentes":
-                    rede_s_sec = st.session_state.get("sec_rede_saida", rede_sec)
-                    cabo_s_sec = st.session_state.get("sec_cabo_saida", cabo_sec)
-                    vao_s_sec = st.session_state.get("sec_vao_saida", vao_sec)
-                    t_saida_sec = obter_tracao(rede_s_sec, cabo_s_sec, vao_s_sec if precisa_vao(rede_s_sec) else None)
-                    f_saida_sec = tracao_transf(t_saida_sec, altura_util(altura_poste), h_sec, int(qtd_fases))
-                else:
-                    f_saida_sec = f_total_sec
-                ang_rad_s = math.radians(ang_saida_sec)
-                fx_total += f_saida_sec * math.cos(ang_rad_s)
-                fy_total += f_saida_sec * math.sin(ang_rad_s)
-                resumo_linhas.append(f"  Saida (Carga): {ang_saida_sec}° -> {f_saida_sec:.0f} daN")
+                rede_s_sec = st.session_state.get("sec_rede_saida", rede_sec)
+                cabo_s_sec = st.session_state.get("sec_cabo_saida", cabo_sec)
+                vao_s_sec = st.session_state.get("sec_vao_saida", vao_sec)
+                t_saida_sec = obter_tracao(rede_s_sec, cabo_s_sec, vao_s_sec if precisa_vao(rede_s_sec) else None)
+                f_saida_sec = tracao_transf(t_saida_sec, altura_util(altura_poste), h_sec, int(qtd_fases))
+            else:
+                f_saida_sec = f_total_sec
+            ang_rad_s = math.radians(ang_saida_sec)
+            fx_total += f_saida_sec * math.cos(ang_rad_s)
+            fy_total += f_saida_sec * math.sin(ang_rad_s)
+            resumo_linhas.append(f"  Saida (Carga): {ang_saida_sec}° -> {f_saida_sec:.0f} daN")
+    st.markdown("---")
 
 st.markdown("---")
 st.subheader("Resultado do Calculo", divider="red")
@@ -448,4 +437,5 @@ with col_rec2:
             st.success(f"Esforco: **{magnitude:.0f} daN** -> Recomendado: **{recomendado} daN**")
         else:
             st.error(f"Esforco de {magnitude:.0f} daN excede 2000 daN. Consulte engenharia.")
+
 
