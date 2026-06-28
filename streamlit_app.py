@@ -449,6 +449,5 @@ with col_rec2:
             st.error(f"Esforco de {magnitude:.0f} daN excede 2000 daN. Consulte engenharia.")
     st.markdown("---")
     if st.button("🔄 Zerar e Recomeçar", use_container_width=True):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+        st.session_state.clear()
         st.rerun()
